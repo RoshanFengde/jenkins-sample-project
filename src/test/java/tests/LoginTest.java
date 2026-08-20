@@ -5,6 +5,8 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.firefox.FirefoxOptions;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -13,42 +15,58 @@ import org.testng.annotations.Test;
 public class LoginTest {
 
     private WebDriver driver;
-    private static final String BASE_URL = "https://the-internet.herokuapp.com/login";
+
+    private static String resolveBaseUrl(String env) {
+        return switch (env) {
+            case "staging" -> "https://the-internet.herokuapp.com/login";
+            case "prod" -> "https://the-internet.herokuapp.com/login";
+            default -> "https://the-internet.herokuapp.com/login"; // qa (default)
+        };
+    }
 
     @BeforeMethod
     public void setUp() {
+        String browser = System.getProperty("browser", "chrome").toLowerCase();
+        String env = System.getProperty("env", "qa").toLowerCase();
+        System.out.println(">>> Running against browser=" + browser + " env=" + env);
+
         String chromeBinary = System.getenv("CHROME_BIN");
         String chromedriverBinary = System.getenv("CHROMEDRIVER_BIN");
+        String firefoxBinary = System.getenv("FIREFOX_BIN");
 
-        if (chromedriverBinary != null && !chromedriverBinary.isEmpty()) {
-            // Running in Jenkins: use the exact chromedriver we installed via apt,
-            // which is version-matched to Chromium. Skip WebDriverManager entirely -
-            // it doesn't reliably resolve a native ARM64 chromedriver on this platform.
-            System.setProperty("webdriver.chrome.driver", chromedriverBinary);
+        if ("firefox".equals(browser)) {
+            WebDriverManager.firefoxdriver().setup();
+            FirefoxOptions options = new FirefoxOptions();
+            options.addArguments("--headless");
+            if (firefoxBinary != null && !firefoxBinary.isEmpty()) {
+                options.setBinary(firefoxBinary);
+            }
+            driver = new FirefoxDriver(options);
         } else {
-            // Running locally on your Mac: let WebDriverManager auto-download
-            // the matching chromedriver as usual.
-            WebDriverManager.chromedriver().setup();
+            if (chromedriverBinary != null && !chromedriverBinary.isEmpty()) {
+                System.setProperty("webdriver.chrome.driver", chromedriverBinary);
+            } else {
+                WebDriverManager.chromedriver().setup();
+            }
+
+            ChromeOptions options = new ChromeOptions();
+            options.addArguments("--headless=new");
+            options.addArguments("--no-sandbox");
+            options.addArguments("--disable-dev-shm-usage");
+            options.addArguments("--disable-gpu");
+            options.addArguments("--remote-allow-origins=*");
+            options.addArguments("--window-size=1920,1080");
+            if (chromeBinary != null && !chromeBinary.isEmpty()) {
+                options.setBinary(chromeBinary);
+            }
+            driver = new ChromeDriver(options);
         }
-
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless=new");
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--remote-allow-origins=*");
-        options.addArguments("--window-size=1920,1080");
-
-        if (chromeBinary != null && !chromeBinary.isEmpty()) {
-            options.setBinary(chromeBinary);
-        }
-
-        driver = new ChromeDriver(options);
     }
 
     @Test
     public void validLoginShouldSucceed() {
-        driver.get(BASE_URL);
+        String baseUrl = resolveBaseUrl(System.getProperty("env", "qa").toLowerCase());
+        driver.get(baseUrl);
         driver.findElement(By.id("username")).sendKeys("tomsmith");
         driver.findElement(By.id("password")).sendKeys("SuperSecretPassword!");
         driver.findElement(By.cssSelector("button[type='submit']")).click();
@@ -60,7 +78,8 @@ public class LoginTest {
 
     @Test
     public void invalidLoginShouldFail() {
-        driver.get(BASE_URL);
+        String baseUrl = resolveBaseUrl(System.getProperty("env", "qa").toLowerCase());
+        driver.get(baseUrl);
         driver.findElement(By.id("username")).sendKeys("wronguser");
         driver.findElement(By.id("password")).sendKeys("wrongpassword");
         driver.findElement(By.cssSelector("button[type='submit']")).click();
