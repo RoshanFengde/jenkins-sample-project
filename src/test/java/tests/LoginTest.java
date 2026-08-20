@@ -17,16 +17,19 @@ public class LoginTest {
 
     @BeforeMethod
     public void setUp() {
-        // On your local Mac, Selenium finds Chrome automatically - no env var needed.
-        // Inside the Jenkins container, we installed Chromium at a non-default path.
-        // WebDriverManager reads the "wdm.browserPath" system property to know where
-        // to look when detecting the browser version, so we set that before setup().
         String chromeBinary = System.getenv("CHROME_BIN");
-        if (chromeBinary != null && !chromeBinary.isEmpty()) {
-            System.setProperty("wdm.browserPath", chromeBinary);
-        }
+        String chromedriverBinary = System.getenv("CHROMEDRIVER_BIN");
 
-        WebDriverManager.chromedriver().setup();
+        if (chromedriverBinary != null && !chromedriverBinary.isEmpty()) {
+            // Running in Jenkins: use the exact chromedriver we installed via apt,
+            // which is version-matched to Chromium. Skip WebDriverManager entirely -
+            // it doesn't reliably resolve a native ARM64 chromedriver on this platform.
+            System.setProperty("webdriver.chrome.driver", chromedriverBinary);
+        } else {
+            // Running locally on your Mac: let WebDriverManager auto-download
+            // the matching chromedriver as usual.
+            WebDriverManager.chromedriver().setup();
+        }
 
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless=new");
