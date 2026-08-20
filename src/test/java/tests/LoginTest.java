@@ -30,6 +30,14 @@ public class LoginTest {
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--window-size=1920,1080");
 
+        // On your local Mac, Selenium finds Chrome automatically - no env var needed.
+        // Inside the Jenkins container, we installed Chromium (not Google Chrome) at
+        // a non-default path, so we point Selenium at it explicitly via CHROME_BIN.
+        String chromeBinary = System.getenv("CHROME_BIN");
+        if (chromeBinary != null && !chromeBinary.isEmpty()) {
+            options.setBinary(chromeBinary);
+        }
+
         driver = new ChromeDriver(options);
     }
 

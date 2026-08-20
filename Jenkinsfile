@@ -5,6 +5,10 @@ pipeline {
         jdk 'JDK17'
         maven 'Maven3'
     }
+    
+    environment {
+        CHROME_BIN = '/usr/bin/chromium'
+    }
 
     stages {
         stage('Checkout') {
