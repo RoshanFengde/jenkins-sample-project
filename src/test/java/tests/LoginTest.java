@@ -18,17 +18,15 @@ public class LoginTest {
     @BeforeMethod
     public void setUp() {
         // On your local Mac, Selenium finds Chrome automatically - no env var needed.
-        // Inside the Jenkins container, we installed Chromium at a non-default path,
-        // so we point BOTH WebDriverManager AND ChromeOptions at it - WebDriverManager
-        // needs this too, otherwise it downloads a chromedriver version that doesn't
-        // match our actual browser, which is what was crashing before.
+        // Inside the Jenkins container, we installed Chromium at a non-default path.
+        // WebDriverManager reads the "wdm.browserPath" system property to know where
+        // to look when detecting the browser version, so we set that before setup().
         String chromeBinary = System.getenv("CHROME_BIN");
-
-        WebDriverManager wdm = WebDriverManager.chromedriver();
         if (chromeBinary != null && !chromeBinary.isEmpty()) {
-            wdm.browserPath(chromeBinary);
+            System.setProperty("wdm.browserPath", chromeBinary);
         }
-        wdm.setup();
+
+        WebDriverManager.chromedriver().setup();
 
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless=new");
