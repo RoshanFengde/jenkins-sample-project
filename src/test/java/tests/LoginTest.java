@@ -17,23 +17,27 @@ public class LoginTest {
 
     @BeforeMethod
     public void setUp() {
-        // WebDriverManager auto-downloads the matching chromedriver version.
-        // This matters a lot in Jenkins/Docker, where there's no chromedriver
-        // pre-installed on the machine.
-        WebDriverManager.chromedriver().setup();
+        // On your local Mac, Selenium finds Chrome automatically - no env var needed.
+        // Inside the Jenkins container, we installed Chromium at a non-default path,
+        // so we point BOTH WebDriverManager AND ChromeOptions at it - WebDriverManager
+        // needs this too, otherwise it downloads a chromedriver version that doesn't
+        // match our actual browser, which is what was crashing before.
+        String chromeBinary = System.getenv("CHROME_BIN");
+
+        WebDriverManager wdm = WebDriverManager.chromedriver();
+        if (chromeBinary != null && !chromeBinary.isEmpty()) {
+            wdm.browserPath(chromeBinary);
+        }
+        wdm.setup();
 
         ChromeOptions options = new ChromeOptions();
-        // Headless mode is mandatory when running inside the Jenkins container -
-        // there is no display/monitor available for a real browser window.
         options.addArguments("--headless=new");
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
+        options.addArguments("--disable-gpu");
+        options.addArguments("--remote-allow-origins=*");
         options.addArguments("--window-size=1920,1080");
 
-        // On your local Mac, Selenium finds Chrome automatically - no env var needed.
-        // Inside the Jenkins container, we installed Chromium (not Google Chrome) at
-        // a non-default path, so we point Selenium at it explicitly via CHROME_BIN.
-        String chromeBinary = System.getenv("CHROME_BIN");
         if (chromeBinary != null && !chromeBinary.isEmpty()) {
             options.setBinary(chromeBinary);
         }
